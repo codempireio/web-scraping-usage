@@ -19,6 +19,7 @@ export class NotesService {
   }
 
   async getNotes(): Promise<Note[]> {
+    await this.parseData();
     return await this.noteModel.find().exec();
   }
 
