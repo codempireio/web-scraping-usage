@@ -3,8 +3,7 @@ import * as puppeteer from 'puppeteer';
 import { Model } from 'mongoose';
 import { Note } from './interfaces/note.interface';
 import { CreateNoteDTO } from './dto/note.dto';
-
-const targetUrl = 'https://news.ycombinator.com/';
+import { parseBodyDTO } from './dto/parseBody.dto';
 
 @Injectable()
 export class NotesService {
@@ -19,33 +18,53 @@ export class NotesService {
   }
 
   async getNotes(): Promise<Note[]> {
-    await this.parseData();
     return await this.noteModel.find().exec();
   }
 
-  async parseData(): Promise<any> {
-    const browser = await puppeteer.launch();
-    const page = await browser.newPage();
-    await page.goto(targetUrl);
-
-    const newsData = await page.evaluate(() => {
-      const news = [];
-      // get the hotel elements
-      const newsElement = document.querySelectorAll('a.storyLink');
-      // get the hotel data
-      for (const newsEl of newsElement) {
-        news.push(newsEl.innerHTML);
-      }
-      return news;
+  async parseData(body: parseBodyDTO): Promise<any> {
+    const { url, firstNode, properties } = body;
+    console.log(properties);
+    const browser = await puppeteer.launch({
+      headless: false,
+      defaultViewport: null,
     });
 
-    for (const newsEl of newsData) {
-      await this.createNote({
-        id: +new Date(),
-        text: newsEl,
-      });
+    const page = await browser.newPage();
+    await page.goto(url);
+    const items = [];
+    const links = await page.evaluate((node: string) => {
+      const hrefs = [];
+      const linkElements = document.querySelectorAll(node);
+      console.log(linkElements)
+      for (let link of linkElements ) {
+        hrefs.push(link.getAttribute('href'));
+      }
+      return hrefs;
+    }, firstNode);
+
+    for (const link of links) {
+      await page.click(`[href='${link}']`);
+      const data = await parsePage();
+      console.log(data);
+      items.push(data);
+      await page.goBack();
+    }
+    
+    async function parsePage() {
+      await page.waitForSelector(properties[0]);
+      const parsedData = await page.evaluate((properties: string[]) => {
+        const parsedParams = [];
+
+        // TODO: check if elements with node exist
+        for (const param of properties) {
+          const element = document.querySelector(param);
+          parsedParams.push(element.innerHTML);
+        }
+        return parsedParams;
+      }, properties);
+      return parsedData;
     }
 
-    return newsData;
+    return items;
   }
 }

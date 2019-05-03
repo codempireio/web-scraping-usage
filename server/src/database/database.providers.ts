@@ -3,9 +3,9 @@ import { config } from 'src/service/config';
 
 export const databaseProviders = [
   {
-    provide: 'DATABASE_CONNECTION',
+    provide: config.DATABASE_PROVIDER,
     useFactory: (): Promise<typeof mongoose> =>
-      mongoose.connect(`mongodb://${config.MONGO_DB_USER_NAME}:${config.MONGO_DB_USER_PASSWORD}@ds137661.mlab.com:37661/my-notes`,
+      mongoose.connect(config.dbURI,
       {useNewUrlParser: true}),
   },
 ];
