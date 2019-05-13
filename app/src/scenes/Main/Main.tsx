@@ -9,9 +9,15 @@ import {
   withStyles,
   WithStyles
 } from "@material-ui/core";
+import { ParseParams, parsingService } from "../../services/parsing-service";
+
+export type ParsedData = string[][];
 
 interface IState {
-  parsedData: string[][] | Response;
+  parsedData: {
+    url: string;
+    parsedData: ParsedData;
+  } | null;
   isLoading: boolean;
 }
 
@@ -25,37 +31,18 @@ const styles = () => ({
 
 class Wrapper extends React.Component<IProps, IState> {
   state = {
-    parsedData: [],
+    parsedData: null,
     isLoading: false
   };
-  parseData = async (parseParams: any) => {
-    try {
-      this.setState({
-        isLoading: true
-      });
-      const results = await fetch("http://localhost:3000/notes", {
-        method: "POST",
-        headers: {
-          Accept: "application/json",
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify(parseParams)
-      });
-      results
-        .json()
-        .then(data => {
-          console.log(data);
-          this.setState({
-            parsedData: data,
-            isLoading: false
-          });
-        })
-        .catch(err => {
-          console.log(err);
-        });
-    } catch (err) {
-      console.log(err);
-    }
+  parseData = async (parseParams: ParseParams) => {
+    this.setState({
+      isLoading: true
+    });
+    const data = await parsingService.parseData(parseParams);
+    this.setState({
+      parsedData: data,
+      isLoading: false
+    });
   };
 
   render() {
