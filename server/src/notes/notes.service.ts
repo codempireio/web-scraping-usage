@@ -3,16 +3,35 @@ import * as puppeteer from 'puppeteer';
 import { Model } from 'mongoose';
 import { Item } from './interfaces/item.interface';
 import { parseBodyDTO } from './dto/parseBody.dto';
+import { parserConfig } from 'src/service/config';
 
 @Injectable()
 export class NotesService {
   constructor(
     @Inject('ITEM_MODEL')
-    private readonly itemModel: Model<Item>,
+    private readonly itemModel: Model<Item>
   ) {}
 
   async getNotes(): Promise<any> {
     return await this.itemModel.find().exec();
+  }
+
+  private async parsePage(page, properties) {
+    await page.waitForSelector(properties[0]);
+    if ((await page.$(properties[0])) === null) {
+      await page.goBack();
+    }
+    const parsedData = await page.evaluate((properties: string[]) => {
+      const parsedParams = [];
+      for (const param of properties) {
+        const element = document.querySelector(param);
+        if (element) {
+          parsedParams.push(element.innerHTML.trim());
+        }
+      }
+      return parsedParams;
+    }, properties);
+    return parsedData;
   }
 
   async parseData(body: parseBodyDTO): Promise<any> {
@@ -26,14 +45,16 @@ export class NotesService {
     });
 
     const page = await browser.newPage();
-    await page.setViewport({ width: 2000, height: 1080 });
+    await page.setViewport({
+      width: parserConfig.chromiumWidth,
+      height: parserConfig.chromiumHeight,
+    });
     await page.goto(url);
     const items = [];
     let links = [];
 
     for (currentPage; currentPage <= pageAmount; currentPage++) {
-      console.log('-------------------------------------'); // Develop
-      await page.waitFor(2000);
+      await page.waitFor(parserConfig.delay * 1000);
       await page.waitForSelector(firstNode);
       links = await page.evaluate((node: string) => {
         const hrefs = [];
@@ -44,16 +65,11 @@ export class NotesService {
           }
           hrefs.push(link.getAttribute('href'));
         }
-        console.log(hrefs);
         return hrefs;
       }, firstNode);
-      console.log(links.length, 'links'); // Develop process
-      links.splice(0, 37); // TODO: delete before deployment
-      console.log(links.length, 'links after splice'); // Develop process
       for (const link of links) {
         await page.click(`[href='${link}']`);
-        const data = await parsePage();
-        console.log(data);
+        const data = await this.parsePage(page, properties);
         items.push(data);
         await page.goBack();
       }
@@ -64,29 +80,11 @@ export class NotesService {
       await page.click(nextPageBtn);
     }
 
-    async function parsePage() {
-      // await page.waitForSelector(properties[0]);
-      if ((await page.$(properties[0])) === null) {
-        await page.goBack();
-      }
-      const parsedData = await page.evaluate((properties: string[]) => {
-        const parsedParams = [];
-        for (const param of properties) {
-          const element = document.querySelector(param);
-          if (element) {
-            parsedParams.push(element.innerHTML.trim());
-          }
-        }
-        return parsedParams;
-      }, properties);
-      return parsedData;
-    }
     const newItem = new this.itemModel({
       url,
       parsedData: items,
     });
     await newItem.save();
-    console.log(items.length, 'items');
     return items;
   }
 }
