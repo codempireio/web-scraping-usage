@@ -9,16 +9,16 @@ import {
   withStyles,
   WithStyles
 } from "@material-ui/core";
-import { ParseParams, parsingService } from "../../services/parsing-service";
-
-export type ParsedData = string[][];
+import {
+  ParseParams,
+  parsingService,
+  ServerResponse
+} from "../../services/parsing-service";
 
 interface IState {
-  parsedData: {
-    url: string;
-    parsedData: ParsedData;
-  } | null;
+  parsedData: ServerResponse | null;
   isLoading: boolean;
+  isError: boolean;
 }
 
 interface IProps extends WithStyles<typeof styles> {}
@@ -32,13 +32,23 @@ const styles = () => ({
 class Wrapper extends React.Component<IProps, IState> {
   state = {
     parsedData: null,
-    isLoading: false
+    isLoading: false,
+    isError: false
   };
   parseData = async (parseParams: ParseParams) => {
     this.setState({
       isLoading: true
     });
     const data = await parsingService.parseData(parseParams);
+
+    if (!data) {
+      this.setState({
+        isError: true,
+        isLoading: false
+      });
+      return;
+    }
+
     this.setState({
       parsedData: data,
       isLoading: false
@@ -46,6 +56,7 @@ class Wrapper extends React.Component<IProps, IState> {
   };
 
   render() {
+    const { isLoading, isError, parsedData } = this.state;
     return (
       <div>
         <AppBar
@@ -65,8 +76,9 @@ class Wrapper extends React.Component<IProps, IState> {
           </Grid>
           <Grid item xs={6}>
             <DataContainer
-              isLoading={this.state.isLoading}
-              data={this.state.parsedData}
+              isLoading={isLoading}
+              data={parsedData}
+              isError={isError}
             />
           </Grid>
         </Grid>

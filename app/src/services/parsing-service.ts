@@ -6,8 +6,15 @@ export interface ParseParams {
   pageAmount: number;
 }
 
+type ParsedData = string[][];
+
+export interface ServerResponse {
+  url: string;
+  parsedData: ParsedData;
+}
+
 class ParsingService {
-  public parseData = async (parseParams: ParseParams) => {
+  public parseData = async (parseParams: ParseParams): Promise<ServerResponse | void> => {
     try {
       const results = await fetch("http://localhost:3000/notes", {
         method: "POST",
@@ -20,7 +27,7 @@ class ParsingService {
       const data = await results.json();
       return data;
     } catch (err) {
-      console.log(err);
+      console.warn(err);
     }
   };
 }
