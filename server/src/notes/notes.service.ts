@@ -12,7 +12,7 @@ export class NotesService {
     private readonly itemModel: Model<Item>
   ) {}
 
-  async getNotes(): Promise<any> {
+  async getNotes(): Promise<Item[]> {
     return await this.itemModel.find().exec();
   }
 
@@ -34,20 +34,23 @@ export class NotesService {
     return parsedData;
   }
 
-  async parseData(body: parseBodyDTO): Promise<any> {
+  async parseData(body: parseBodyDTO): Promise<Item[]> {
     const { url, firstNode, properties, pageAmount, nextPageBtn } = body;
     console.log(body);
     let currentPage = 1;
     const browser = await puppeteer.launch({
       headless: false,
       defaultViewport: null,
-      args: [`--window-size=${2000},${1080}`],
+      args: [
+        `--window-size=${parserConfig.chromiumWidth *
+          1000},${parserConfig.chromiumHeight * 1000}`,
+      ],
     });
 
     const page = await browser.newPage();
     await page.setViewport({
-      width: parserConfig.chromiumWidth,
-      height: parserConfig.chromiumHeight,
+      width: parserConfig.chromiumWidth * 1000,
+      height: parserConfig.chromiumHeight * 1000,
     });
     await page.goto(url);
     const items = [];
